@@ -108,3 +108,37 @@ gpt2 = Model(inputs, outputs)
 gpt2.build(input_shape=(1, MAX_LENGTH))
 
 gpt2.summary()
+
+//Tokenizer Setup
+
+from transformers import GPT2Tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+tokenizer.pad_token = tokenizer.eos_token
+
+//Text Generation Function
+
+def generate_text(prompt, max_length=50):
+    input_ids = tokenizer.encode(prompt, return_tensors='tf')
+
+    for _ in range(max_length):
+        outputs = gpt2(input_ids)
+        next_token_logits = outputs[:, -1, :]
+        next_token = tf.argmax(next_token_logits, axis=-1, output_type=tf.int32)
+
+        input_ids = tf.concat([input_ids, tf.expand_dims(next_token, axis=1)], axis=1)
+
+        if next_token.numpy()[0] == tokenizer.eos_token_id:
+            break
+
+    return tokenizer.decode(input_ids[0], skip_special_tokens=True)
+
+//Chat Interface with Gradio
+
+import gradio as gr
+
+def chatbot_interface(prompt):
+    return generate_text(prompt)
+
+gr.Interface(fn=chatbot_interface, inputs="text", outputs="text", title="GPT-2 Chatbot (TensorFlow)").launch()
+
+
